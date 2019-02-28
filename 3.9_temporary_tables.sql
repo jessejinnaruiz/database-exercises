@@ -140,44 +140,83 @@ GROUP BY a.dept_name
 ORDER BY avg_z_salary DESC;
 
 -- What is the average salary for an employee based on the number of years they have been with the company? Express your answer in terms of the Z-score of salary. Since this data is a little older, scale the years of experience by subtracting the minumum from every row.
-CREATE TEMPORARY TABLE averages_of_employees AS
-SELECT AVG(salaries.salary) AS average_salary
-FROM employees.dept_emp
-JOIN employees.salaries ON dept_emp.emp_no = salaries.emp_no
-ORDER BY AVG(salaries.salary) DESC;
+-- CREATE TEMPORARY TABLE averages_of_employees AS
+-- SELECT AVG(salaries.salary) AS average_salary
+-- FROM employees.dept_emp
+-- JOIN employees.salaries ON dept_emp.emp_no = salaries.emp_no
+-- ORDER BY AVG(salaries.salary) DESC;
 
-SELECT * 
-FROM averages_of_employees;
+-- SELECT * 
+-- FROM averages_of_employees;
 
-
+-- DROP TABLE averages_of_employees;
 
 -- 1. get aggregates
 SELECT AVG(salary), STDDEV(salary)
 FROM employees.salaries
 WHERE to_date > NOW();
 
--- 2. get z score
-SELECT emp_no, salary, ((salary-72012)/17310) AS z_salary
+-- 2. get z score & years that an employee worked
+CREATE TEMPORARY TABLE z_salary_table AS
+SELECT ((salaries.salary-72012)/17310) AS z_salary, salaries.salary, employees.hire_date, ROUND(DATEDIFF(NOW(), (employees.hire_date))/365.25)-19 AS years_worked
 FROM employees.salaries
-WHERE to_date > NOW();
+JOIN employees.employees USING (emp_no);
+
+-- SELECT *
+-- FROM z_salary_table;
+
+-- DROP TABLE z_salary_table;
+
+-- -- 3. get years that an employee worked
+-- ALTER TABLE z_salary_table ADD years_worked INT UNSIGNED;
+
+-- SELECT *
+-- FROM z_salary_table;
+
+-- UPDATE z_salary_table
+-- SET years_worked = ROUND(DATEDIFF(NOW(), (hire_date))/365.25)-19;
+
+-- SELECT *
+-- FROM z_salary_table;
 
 
--- 3. get years employee worked
-SELECT , salaries.emp_no, salaries.salary, ((salary-72012)/17310) AS z_salary
-FROM employees.salaries
-JOIN employees.dept_emp de ON salaries.emp_no = de.emp_no
-WHERE salaries.to_date > NOW();
-
+-- SELECT (ROUND(DATEDIFF(NOW(), MIN(employees.hire_date))/365.25)-19) as years_worked, emp_no
+-- FROM employees.employees
+-- JOIN z_salary_table USING (emp_no)
+-- GROUP BY emp_no;
 
 -- 4. get avg z by years
-SELECT a.dept_name, AVG(a.z_salary) AS avg_z_salary 
-FROM
-(
-	SELECT d.dept_name, salaries.emp_no, salaries.salary, ((salary-72012)/17310) AS z_salary
-	FROM employees.salaries
-	JOIN employees.dept_emp de ON salaries.emp_no = de.emp_no
-	JOIN employees.departments d ON de.dept_no = d.dept_no
-	WHERE salaries.to_date > NOW()
-) a
-GROUP BY a.dept_name
-ORDER BY avg_z_salary DESC;
+SELECT years_worked, AVG(z_salary)
+FROM z_salary_table
+GROUP BY years_worked;
+
+
+-- SELECT DISTINCT ROUND(DATEDIFF(NOW(), MIN(employees.hire_date))/365)-19 AS years_worked, AVG(salary-72012)/17310)
+-- FROM employees.salaries
+-- JOIN employees.employees USING (emp_no)
+-- JOIN z_salary_table USING (emp_no)
+-- GROUP BY emp_no
+-- ORDER BY years_worked DESC;
+
+-- SELECT a.years_worked, a.z_salary
+-- FROM
+-- (
+--     SELECT DISTINCT ROUND(DATEDIFF(NOW(), MIN(employees.hire_date))/365) AS years_worked, employees.emp_no, salaries.salary, ((salary-72012)/17310) AS z_salary
+-- 	FROM employees.salaries
+-- 	JOIN employees.employees USING (emp_no)
+-- 	GROUP BY salaries.salary, z_salary, employees.emp_no
+-- 	ORDER BY years_worked DESC;
+-- ) 
+--     a
+--     GROUP BY a.years_worked;
+--  
+-- SELECT AVG((salary-72012)/17310) AS avg_z_salary
+-- FROM z_salary_table;
+--     
+-- SELECT ROUND(DATEDIFF(NOW(), MIN(employees.hire_date))/365) AS years_worked, employees.emp_no, salaries.salary, 
+-- 	(SELECT AVG((salary-72012)/17310) AS avg_z_salary
+-- 	FROM z_salary_table)
+-- FROM employees.salaries
+-- JOIN employees.employees USING (emp_no)
+-- GROUP BY salaries.salary, z_salary_table.avg_z_salary, employees.emp_no
+-- ORDER BY years_worked DESC;
